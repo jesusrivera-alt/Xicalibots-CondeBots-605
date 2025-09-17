@@ -1,0 +1,119 @@
+#include "HUSKYLENS.h"
+#include "Wire.h"
+#include <Servo.h>
+#include <NewPing.h>
+#define TRIGGER_PIN  12  
+#define ECHO_PIN     11  
+#define MAX_DISTANCE 100
+
+
+NewPing sonar(TRIGGER_PIN, ECHO_PIN, MAX_DISTANCE);
+NewPing sonar1(7, 8, MAX_DISTANCE);
+
+HUSKYLENS huskylens;
+Servo Servo;
+int angulo;
+int color;
+int mota = 5; 
+int motb = 6;
+int boton = 2;
+int estadoboton = 0;
+int distancia;
+int distancia1;
+int sensor = 9; 
+unsigned long  ultimolow = 0;
+
+void setup() {
+  Serial.begin(9600);      // Monitor Serial
+  Wire.begin();            // Comunicación I2C con HuskyLens
+
+  Servo.attach(3);       // Servo en pin 3
+
+  while (!huskylens.begin(Wire)) {
+    Serial.println(F("Begin failed!"));
+    Serial.println(F("1. Verifica que HuskyLens esté en I2C"));
+    Serial.println(F("2. Verifica las conexiones SDA/SCL"));
+    delay(100);
+  }
+
+  Serial.println(F("HuskyLens listo!"));
+  
+  pinMode(mota, OUTPUT);
+  pinMode(motb, OUTPUT);
+  pinMode(sensor, INPUT); 
+}
+
+void loop() {
+
+if (digitalRead(boton) == HIGH){
+  estadoboton = 1;
+}
+  if (estadoboton == 1){
+
+    analogWrite(mota, 250);
+    analogWrite(motb, 0);
+
+    distancia = sonar.ping_cm(); 
+    distancia1 = sonar1.ping_cm();
+    
+
+  if (huskylens.request()) {
+    if (huskylens.available()) {
+      HUSKYLENSResult result = huskylens.read();
+      color = result.ID;
+    }
+  }
+
+if(color == 1 || color == 2 || color == 3){
+color = 1;
+}
+
+if(color == 4 || color == 5 || color == 6){
+  color = 2;
+}
+
+ switch (color) {
+    case 1:  
+    angulo = 20;
+    Serial.println("Color detectado: 1 ");
+    delay(700);
+    break;
+
+      case 2:  
+    angulo = 160;
+    Serial.println("Color detectado:  2 ");
+    delay(700);
+    break;  
+
+    case 0:
+    if (distancia1 >= 76 && distancia1<=99 || distancia1 == 0  ){ 
+
+    if (distancia >= 48 && distancia <= 52) {
+      angulo = 90;
+    }
+    if (distancia >= 2 && distancia <= 47) {
+      angulo = map(distancia, 2, 49, 0, 90);
+    }
+    else if (distancia >= 53 && distancia <= 100) {
+      angulo = map(distancia, 50, 100, 90, 180);
+    }
+
+    }
+
+     if(distancia1 <= 75 && distancia1 >= 70 && distancia >= 40 ){
+      if(digitalRead(sensor) == LOW && millis() - ultimolow > 8000){ 
+      angulo = 20;
+      delay(1100);
+      }
+    }
+
+    Servo.write(angulo);
+    
+    break;
+
+}
+color = 0;
+delay(50); 
+  }
+  
+}
